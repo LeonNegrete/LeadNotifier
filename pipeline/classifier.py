@@ -14,10 +14,16 @@ import time
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = "gemini-2.0-flash"
+MODEL = "gemini-2.5-flash"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 TARGET_COUNTRY = "Spain"
+
+# Free tier is rate-limited per minute (currently ~15 RPM for Flash models, but
+# Google changes this without much notice — if you start seeing 429s again,
+# lower MIN_SECONDS_BETWEEN_CALLS first before assuming something's broken).
+MIN_SECONDS_BETWEEN_CALLS = 4.5
+_last_call_at = 0.0
 
 PROMPT_TEMPLATE = """You are a lead-qualification filter for a hospitality interior design sales team.
 
@@ -49,7 +55,16 @@ Article summary: {summary}
 """
 
 
-def classify_article(article: dict, retries: int = 2) -> dict | None:
+def _wait_for_rate_limit():
+    """Enforce a minimum gap between calls so we don't blow through the free-tier RPM cap."""
+    global _last_call_at
+    elapsed = time.monotonic() - _last_call_at
+    if elapsed < MIN_SECONDS_BETWEEN_CALLS:
+        time.sleep(MIN_SECONDS_BETWEEN_CALLS - elapsed)
+    _last_call_at = time.monotonic()
+
+
+def classify_article(article: dict, retries: int = 4) -> dict | None:
     """Returns an extraction dict if relevant, or None if not relevant / failed."""
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
@@ -69,12 +84,26 @@ def classify_article(article: dict, retries: int = 2) -> dict | None:
     }
 
     for attempt in range(retries + 1):
+        _wait_for_rate_limit()
         try:
             resp = requests.post(
                 f"{API_URL}?key={GEMINI_API_KEY}",
                 json=payload,
                 timeout=30,
             )
+
+            if resp.status_code == 429:
+                # Respect Retry-After if the API sends one; otherwise back off hard —
+                # a 429 means we're over the per-minute quota, so a short sleep won't help.
+                retry_after = resp.headers.get("Retry-After")
+                wait_s = float(retry_after) if retry_after else 20 * (attempt + 1)
+                if attempt < retries:
+                    print(f"  [rate limited] waiting {wait_s:.0f}s before retry...")
+                    time.sleep(wait_s)
+                    continue
+                print(f"  [classifier error] '{article.get('title', '')[:60]}': still rate limited after {retries} retries")
+                return None
+
             resp.raise_for_status()
             data = resp.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]
