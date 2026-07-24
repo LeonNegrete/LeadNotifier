@@ -1,0 +1,42 @@
+# List of RSS feeds to poll daily.
+# "verified: true" means I (Claude) confirmed this feed URL resolves and is a real feed.
+# "verified: false" means it's a well-known publication with a standard WordPress-style
+# /feed URL guessed from convention — check it once in your browser before relying on it.
+#
+# Add/remove feeds freely. Category is just a label for you; it isn't used by the code yet.
+
+feeds:
+  - name: "Hosteltur - General"
+    url: "https://www.hosteltur.com/feed"
+    category: "hospitality_news"
+    verified: true
+
+  - name: "Hosteltur - Hoteles y Alojamientos"
+    url: "https://www.hosteltur.com/feed/hoteles-y-alojamientos"
+    category: "hospitality_news"
+    verified: true
+
+  - name: "TecnoHotel"
+    url: "https://tecnohotelnews.com/feed"
+    category: "hospitality_trade"
+    verified: false
+
+  - name: "Preferente"
+    url: "https://www.preferente.com/feed"
+    category: "hospitality_news"
+    verified: false
+
+  - name: "Hosteltur - Tag Aperturas de Hoteles"
+    url: "https://www.hosteltur.com/feed/tag/aperturas-de-hoteles"
+    category: "hotel_openings"
+    verified: false
+
+# --- Add architecture / interior design press below ---
+# Good candidates to check and add (all are real publications, verify feed URL before use):
+#   - Experimenta (experimenta.es) — design/interiors magazine
+#   - ArchDaily en Español (archdaily.mx or plataformaarquitectura.cl) — architecture, has fit-out projects
+#   - Interiores Minimalistas / AD España (admagazine.com) — hospitality interiors features
+#   - Contract Hoteles / Contract Design pubs — some are subscription/paywalled, check RSS availability
+#
+# --- Add regional/national real estate journals below ---
+#   - Idealista news (idealista.com/news) has an RSS but is heavily residential; low signal

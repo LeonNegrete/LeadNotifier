@@ -1,0 +1,38 @@
+name: Daily Lead Scrape
+
+on:
+  schedule:
+    # 05:00 UTC daily = early morning in Spain (adjust if you want a different time)
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+permissions:
+  contents: write   # needed so the bot can commit leads.db back to the repo
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m pipeline.main
+
+      - name: Commit and push if there are changes
+        run: |
+          git config user.name "lead-scraper-bot"
+          git config user.email "actions@github.com"
+          git add leads.db last_run.txt
+          git diff --staged --quiet || git commit -m "Daily lead scrape $(date -u +'%Y-%m-%d')"
+          git push

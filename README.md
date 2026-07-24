@@ -1,0 +1,78 @@
+# Hotel Interior Design Lead Scraper
+
+Daily-running scraper that reads Spanish hospitality/design trade press RSS
+feeds, uses Gemini to classify+extract renovation/fit-out leads, stores them
+in a SQLite file versioned in this repo, and gives you a local CLI to review
+them (`git pull` model — no push notifications in v1, that's planned for v2
+as a daily email).
+
+## How it works
+
+1. **GitHub Actions** runs `pipeline/main.py` every morning (cron in
+   `.github/workflows/daily-scrape.yml`).
+2. It fetches feeds listed in `feeds.yaml`, sends each recent article to
+   Gemini for classification, and inserts anything relevant into `leads.db`.
+3. If `leads.db` or `last_run.txt` changed, the Action commits and pushes
+   them back to this repo.
+4. You run `python cli/review.py` locally whenever you want to check leads —
+   it pulls the latest DB, shows you everything with `lead_status = 'New'`,
+   and lets you mark items reviewed and push that status back.
+
+## One-time setup
+
+1. **Create a GitHub repo** and push this project to it.
+2. **Get a free Gemini API key**: https://aistudio.google.com/apikey
+3. **Add it as a repo secret**: repo → Settings → Secrets and variables →
+   Actions → New repository secret → name it `GEMINI_API_KEY`.
+4. **Enable Actions** if it's not already (Settings → Actions → General →
+   allow all actions).
+5. Locally: `pip install -r requirements.txt`
+6. Clone the repo locally (this is where you'll run the CLI from).
+
+## Running it
+
+- **Manual test run of the pipeline** (instead of waiting for the daily
+  cron): go to the Actions tab → "Daily Lead Scrape" → "Run workflow".
+- **Review leads locally**:
+  ```
+  cd hotel-lead-scraper
+  python cli/review.py
+  ```
+
+## Before this is actually useful: fill out `feeds.yaml`
+
+I seeded it with a couple of confirmed-working Hosteltur feeds and a few
+educated guesses at standard WordPress `/feed` URLs for other publications —
+those are marked `verified: false`. Open each one in a browser first to
+confirm it's a real feed before relying on it. The file has notes on good
+categories of sources to add (architecture/design press, regional trade
+journals) — this list is the single biggest lever on lead quality, so it's
+worth 30 minutes of manual curation rather than treating it as done.
+
+## Deliberately out of scope for v1
+
+- **Building permits.** Spain doesn't have a unified national permit feed —
+  it's per-municipality, mostly not machine-readable. Not worth the
+  engineering time until the RSS-based version is proven out. If you want
+  it later, treat it as "pick 3-5 target cities and write one scraper per
+  city hall."
+- **Push notifications.** v1 is pull-only (`git pull` + CLI). A daily email
+  digest is the planned v2 (e.g. via a free transactional email API,
+  triggered at the end of the Action if `new_leads > 0`).
+- **Contact enrichment.** This tool only tells you *which property* to look
+  at and *why* — finding the actual decision-maker's phone number is a
+  separate downstream step, intentionally not built here.
+
+## Database schema
+
+See `pipeline/db.py` for the full schema. Main table is `leads`, with a
+`run_log` table tracking each day's scan (article count, leads found) —
+that's what powers `last_run.txt`.
+
+## Notes on scale
+
+SQLite-in-Git works fine at this volume (single writer, low frequency). If
+this ever exceeds ~100k rows, or you add a second person writing to the DB
+concurrently, that's the point to migrate to a real Postgres instance — the
+schema translates directly, only the connection in `pipeline/db.py` changes.
+Not a v1 concern.

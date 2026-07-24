@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+leads.db-wal
+leads.db-shm
+.env
