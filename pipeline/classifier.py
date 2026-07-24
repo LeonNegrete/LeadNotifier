@@ -19,10 +19,18 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:gene
 
 TARGET_COUNTRY = "Spain"
 
-# Free tier is rate-limited per minute (currently ~15 RPM for Flash models, but
-# Google changes this without much notice — if you start seeing 429s again,
-# lower MIN_SECONDS_BETWEEN_CALLS first before assuming something's broken).
-MIN_SECONDS_BETWEEN_CALLS = 4.5
+
+class RateLimitedError(Exception):
+    """Raised when Gemini returns 429 after retries are exhausted."""
+    pass
+
+
+# Free tier is rate-limited per minute, but the exact number moves around —
+# start conservative. If you still see 429s at this pacing, it's more likely
+# a daily/quota-level block than a per-minute one (see the circuit breaker in
+# main.py), and waiting longer here won't fix that.
+MIN_SECONDS_BETWEEN_CALLS = 6.5
+MAX_BACKOFF_SECONDS = 20
 _last_call_at = 0.0
 
 PROMPT_TEMPLATE = """You are a lead-qualification filter for a hospitality interior design sales team.
@@ -64,7 +72,7 @@ def _wait_for_rate_limit():
     _last_call_at = time.monotonic()
 
 
-def classify_article(article: dict, retries: int = 4) -> dict | None:
+def classify_article(article: dict, retries: int = 1) -> dict | None:
     """Returns an extraction dict if relevant, or None if not relevant / failed."""
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
@@ -93,16 +101,20 @@ def classify_article(article: dict, retries: int = 4) -> dict | None:
             )
 
             if resp.status_code == 429:
-                # Respect Retry-After if the API sends one; otherwise back off hard —
-                # a 429 means we're over the per-minute quota, so a short sleep won't help.
+                # Respect Retry-After if the API sends one, capped so one stubborn
+                # article can't stall the whole run for minutes. If we're still
+                # getting 429s at this point, it's more likely a daily quota
+                # exhaustion than a per-minute limit — more waiting won't help,
+                # so we fail this article quickly and let main.py's circuit
+                # breaker decide whether to abort the whole run.
                 retry_after = resp.headers.get("Retry-After")
-                wait_s = float(retry_after) if retry_after else 20 * (attempt + 1)
+                wait_s = min(float(retry_after), MAX_BACKOFF_SECONDS) if retry_after else MAX_BACKOFF_SECONDS
                 if attempt < retries:
                     print(f"  [rate limited] waiting {wait_s:.0f}s before retry...")
                     time.sleep(wait_s)
                     continue
-                print(f"  [classifier error] '{article.get('title', '')[:60]}': still rate limited after {retries} retries")
-                return None
+                print(f"  [classifier error] '{article.get('title', '')[:60]}': rate limited (429)")
+                raise RateLimitedError()
 
             resp.raise_for_status()
             data = resp.json()
@@ -115,6 +127,8 @@ def classify_article(article: dict, retries: int = 4) -> dict | None:
             parsed["source_url"] = article.get("url")
             return parsed
 
+        except RateLimitedError:
+            raise
         except (requests.RequestException, KeyError, json.JSONDecodeError, IndexError) as e:
             if attempt < retries:
                 time.sleep(2 * (attempt + 1))

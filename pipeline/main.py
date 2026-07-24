@@ -18,9 +18,26 @@ def run():
         print(f"  [feed error] {err}")
 
     new_lead_count = 0
+    consecutive_rate_limits = 0
+    RATE_LIMIT_ABORT_THRESHOLD = 3  # 3 in a row means this is a quota problem, not noise
+
     for i, article in enumerate(articles, 1):
         print(f"[{i}/{len(articles)}] Classifying: {article['title'][:70]}")
-        result = classifier.classify_article(article)
+        try:
+            result = classifier.classify_article(article)
+            consecutive_rate_limits = 0
+        except classifier.RateLimitedError:
+            consecutive_rate_limits += 1
+            if consecutive_rate_limits >= RATE_LIMIT_ABORT_THRESHOLD:
+                print(
+                    f"\n{RATE_LIMIT_ABORT_THRESHOLD} rate-limit failures in a row — "
+                    "this looks like a quota problem (daily cap, not per-minute), "
+                    "so stopping here instead of grinding through the rest of the "
+                    f"{len(articles) - i} remaining articles. What was found so far is still saved."
+                )
+                break
+            continue
+
         if result is None:
             continue
 

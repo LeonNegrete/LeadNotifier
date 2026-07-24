@@ -27,7 +27,9 @@ jobs:
       - name: Run pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python -m pipeline.main
+          PYTHONUNBUFFERED: "1"
+        run: python -u -m pipeline.main
+        timeout-minutes: 10   # bounded: with the circuit breaker this should never need anywhere near this long
 
       - name: Commit and push if there are changes
         run: |
@@ -35,4 +37,7 @@ jobs:
           git config user.email "actions@github.com"
           git add leads.db last_run.txt
           git diff --staged --quiet || git commit -m "Daily lead scrape $(date -u +'%Y-%m-%d')"
+          # Rebase onto whatever is currently on main before pushing, in case
+          # another run (or a manual push) landed while this one was going.
+          git pull --rebase origin main
           git push
