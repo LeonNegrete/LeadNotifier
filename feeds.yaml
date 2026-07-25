@@ -1,42 +1,67 @@
 # List of RSS feeds to poll daily.
-# "verified: true" means I (Claude) confirmed this feed URL resolves and is a real feed.
+# "verified: true" means I (Claude) confirmed this feed URL resolves, OR I confirmed
+# the exact underlying tag/category page is packed with on-target renovation content
+# and the feed follows a pattern this site's own RSS page confirmed works.
 # "verified: false" means it's a well-known publication with a standard WordPress-style
 # /feed URL guessed from convention — check it once in your browser before relying on it.
 #
-# Add/remove feeds freely. Category is just a label for you; it isn't used by the code yet.
+# Prioritized for SIGNAL over VOLUME (2026-07-25 update): the general Hosteltur firehose
+# feed was dropped — it was ~95% noise (airline strikes, tourism policy, tourist-tax news)
+# for this use case. These tag-specific feeds are what Hosteltur itself uses to bucket
+# renovation/investment stories, so they arrive pre-filtered.
 
 feeds:
-  - name: "Hosteltur - General"
-    url: "https://www.hosteltur.com/feed"
-    category: "hospitality_news"
+  - name: "Hosteltur - Reformas hoteleras (renovations)"
+    url: "https://www.hosteltur.com/feed/tag/reformas-hoteleras"
+    category: "renovation_signal"
     verified: true
+    note: >
+      Highest-signal feed in this list. Checked the underlying tag page directly —
+      it's wall-to-wall renovation investment stories with euro amounts
+      ("Petit Palace invierte 1M€...", "Parador de Ceuta... 6M€ en renovación").
 
-  - name: "Hosteltur - Hoteles y Alojamientos"
+  - name: "Hosteltur - Reformas (broader renovation tag)"
+    url: "https://www.hosteltur.com/feed/tag/reformas"
+    category: "renovation_signal"
+    verified: false
+    note: "Broader version of the tag above — some overlap expected, that's fine (dedup handles it)."
+
+  - name: "Hosteltur - Aperturas de hoteles (new openings)"
+    url: "https://www.hosteltur.com/feed/tag/aperturas-de-hoteles"
+    category: "hotel_openings"
+    verified: false
+    note: "New hotels often mean a fresh interior fit-out even without the word 'reforma'."
+
+  - name: "Hosteltur - Hoteles y Alojamientos (category)"
     url: "https://www.hosteltur.com/feed/hoteles-y-alojamientos"
     category: "hospitality_news"
     verified: true
-
-  - name: "TecnoHotel"
-    url: "https://tecnohotelnews.com/feed"
-    category: "hospitality_trade"
-    verified: false
+    note: "Broader hotel-category news — kept as a lighter-signal backstop, not the primary source anymore."
 
   - name: "Preferente"
     url: "https://www.preferente.com/feed"
     category: "hospitality_news"
     verified: false
 
-  - name: "Hosteltur - Tag Aperturas de Hoteles"
-    url: "https://www.hosteltur.com/feed/tag/aperturas-de-hoteles"
-    category: "hotel_openings"
-    verified: false
+# --- Known broken, not currently active ---
+# TecnoHotel (tecnohotelnews.com/feed) — their WordPress feed has been returning
+# malformed XML (unescaped characters breaking the parser) as of 2026-07. Worth
+# re-checking periodically since this may just be a temporary bug on their end,
+# but not worth troubleshooting further right now given the Hosteltur tag feeds
+# above are more targeted anyway.
 
 # --- Add architecture / interior design press below ---
 # Good candidates to check and add (all are real publications, verify feed URL before use):
+#   - Diariodesign (diariodesign.com) — has a dedicated hotel-interiors section at
+#     diariodesign.com/interiorismo/hoteles/ ; worth checking for a feed URL
 #   - Experimenta (experimenta.es) — design/interiors magazine
 #   - ArchDaily en Español (archdaily.mx or plataformaarquitectura.cl) — architecture, has fit-out projects
-#   - Interiores Minimalistas / AD España (admagazine.com) — hospitality interiors features
+#   - AD España (admagazine.com) — hospitality interiors features
 #   - Contract Hoteles / Contract Design pubs — some are subscription/paywalled, check RSS availability
-#
-# --- Add regional/national real estate journals below ---
-#   - Idealista news (idealista.com/news) has an RSS but is heavily residential; low signal
+
+# --- Cruise-specific sources worth adding (since scope now includes ships) ---
+#   - Cruise Industry News (cruiseindustrynews.com) — has an RSS feed, covers new-builds and refits
+#   - Seatrade Cruise News (seatrade-cruise.com) — trade press, worth checking for RSS availability
+
+# --- Regional/national real estate journals ---
+#   - Idealista news (idealista.com/news) has an RSS but is heavily residential; low signal, not included

@@ -20,7 +20,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 MODEL = "gemini-3.5-flash-lite"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-TARGET_COUNTRY = "Spain"
+TARGET_MARKET = "Spain"
 
 
 class RateLimitedError(Exception):
@@ -43,23 +43,29 @@ _last_call_at = 0.0
 PROMPT_TEMPLATE = """You are a lead-qualification filter for a hospitality interior design sales team.
 
 Read the article below (title + summary). Decide if it describes a REAL, SPECIFIC
-renovation, construction, fit-out, or interior design project for a hotel, resort,
-or other hospitality property located in {country}.
+renovation, construction, fit-out, or interior design project for EITHER:
+  (a) a hotel, resort, or other hospitality property located in {market}, OR
+  (b) a cruise ship — new-build, refit, or refurbishment — that is relevant to
+      the Spanish market (a Spanish/Spain-based cruise line or operator, or a
+      ship being marketed to Spanish travelers). Ships don't have a fixed
+      country location, so judge relevance by market/operator, not geography.
 
 Do NOT count: general industry trend pieces, opinion columns, financial/earnings
-news with no physical renovation mentioned, or articles about a single property
-that is just opening/operating with no renovation or design work mentioned.
+news with no physical renovation/construction mentioned, or articles about a
+property or ship that is just opening/operating/sailing with no renovation or
+design work mentioned.
 
 Respond with ONLY a JSON object (no markdown fences, no preamble), matching this
 exact shape:
 
 {{
   "is_relevant": true or false,
+  "property_type": "one of: Hotel, Resort, Cruise Ship, Other",
   "property_name": "string or null",
-  "location": "string or null (city/province/region)",
+  "location": "string or null (city/province/region for hotels; home port or cruise line's home market for ships)",
   "project_stage": "one of: Permit Granted, Under Renovation, Pre-opening, Planned, Unknown",
   "interior_studio": "string or null (design/architecture firm, if named)",
-  "investor_chain": "string or null (hotel group / ownership, if named)",
+  "investor_chain": "string or null (hotel group / cruise line / ownership, if named)",
   "summary": "one sentence in English summarizing the project"
 }}
 
@@ -85,7 +91,7 @@ def classify_article(article: dict, retries: int = 1) -> dict | None:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 
     prompt = PROMPT_TEMPLATE.format(
-        country=TARGET_COUNTRY,
+        market=TARGET_MARKET,
         title=article.get("title", ""),
         summary=article.get("summary", ""),
     )

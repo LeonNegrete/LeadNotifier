@@ -1,10 +1,10 @@
 # Hotel Interior Design Lead Scraper
 
 Daily-running scraper that reads Spanish hospitality/design trade press RSS
-feeds, uses Gemini to classify+extract renovation/fit-out leads, stores them
-in a SQLite file versioned in this repo, and gives you a local CLI to review
-them (`git pull` model — no push notifications in v1, that's planned for v2
-as a daily email).
+feeds, uses Gemini to classify+extract renovation/fit-out leads for hotels
+**and cruise ships**, stores them in a SQLite file versioned in this repo,
+and gives you a local CLI to review them (`git pull` model — no push
+notifications in v1, that's planned for v2 as a daily email).
 
 ## How it works
 
@@ -84,7 +84,11 @@ is the only file that would need to change.
 
 See `pipeline/db.py` for the full schema. Main table is `leads`, with a
 `run_log` table tracking each day's scan (article count, leads found) —
-that's what powers `last_run.txt`.
+that's what powers `last_run.txt`. There's a `property_type` column
+(Hotel / Resort / Cruise Ship / Other) so you can tell at a glance what
+kind of lead you're looking at in the CLI. `init_db()` migrates existing
+databases automatically (adds the column if it's missing) — you don't need
+to do anything by hand when pulling this update.
 
 ## Notes on scale
 

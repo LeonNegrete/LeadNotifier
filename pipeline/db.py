@@ -14,6 +14,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     identifier_hash TEXT UNIQUE NOT NULL,
+    property_type TEXT,
     property_name TEXT,
     location TEXT,
     project_stage TEXT,
@@ -41,9 +42,17 @@ def get_connection():
     return conn
 
 
+def _migrate(conn):
+    """Add columns to an existing leads.db that predates them. Safe to run every time."""
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}
+    if "property_type" not in existing_cols:
+        conn.execute("ALTER TABLE leads ADD COLUMN property_type TEXT")
+
+
 def init_db():
     conn = get_connection()
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
     conn.close()
 
@@ -74,13 +83,14 @@ def insert_lead(conn, lead: dict) -> bool:
     conn.execute(
         """
         INSERT INTO leads (
-            identifier_hash, property_name, location, project_stage,
+            identifier_hash, property_type, property_name, location, project_stage,
             interior_studio, investor_chain, source_url, lead_status,
             detection_date, summary
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'New', ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'New', ?, ?)
         """,
         (
             identifier_hash,
+            lead.get("property_type"),
             lead.get("property_name"),
             lead.get("location"),
             lead.get("project_stage"),
