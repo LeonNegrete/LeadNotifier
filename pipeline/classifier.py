@@ -2,10 +2,13 @@
 AI Engine: sends each candidate article to Gemini (free tier) and asks for a
 binary classification + structured extraction in one call.
 
-Uses Gemini because it has the most generous free tier for this kind of
-low-volume daily batch job (tens of articles/day). Swap MODEL / the API call
-below if you'd rather use another provider — the rest of the pipeline only
-cares about the dict this module returns.
+Model note (updated 2026-07-25): pinned to gemini-3.5-flash-lite. Google has
+shipped several Gemini generations in quick succession recently, and at least
+one prior pin (gemini-2.5-flash) started 404ing before its officially
+announced shutdown date. Flash-Lite tiers also tend to get more generous
+RPM/RPD than full Flash, which helps here. If this model starts 404ing too,
+check https://ai.google.dev/gemini-api/docs/models for the current GA Flash
+or Flash-Lite model ID and swap MODEL below — that's the fix, not the pacing.
 """
 
 import os
@@ -14,7 +17,7 @@ import time
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.5-flash-lite"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 TARGET_COUNTRY = "Spain"
@@ -25,10 +28,14 @@ class RateLimitedError(Exception):
     pass
 
 
-# Free tier is rate-limited per minute, but the exact number moves around —
-# start conservative. If you still see 429s at this pacing, it's more likely
-# a daily/quota-level block than a per-minute one (see the circuit breaker in
-# main.py), and waiting longer here won't fix that.
+class ModelNotFoundError(Exception):
+    """Raised when the model ID itself is invalid/retired (404). Retrying won't help."""
+    pass
+
+
+# Exact free-tier RPM isn't published without an AI Studio login (see
+# https://aistudio.google.com/rate-limit for your project's live numbers) —
+# this pacing is a conservative default, not a documented guarantee.
 MIN_SECONDS_BETWEEN_CALLS = 6.5
 MAX_BACKOFF_SECONDS = 20
 _last_call_at = 0.0
@@ -100,13 +107,16 @@ def classify_article(article: dict, retries: int = 1) -> dict | None:
                 timeout=30,
             )
 
+            if resp.status_code == 404:
+                # Model ID itself is wrong/retired — no amount of retrying fixes this.
+                # Fail immediately rather than burning the retry budget on it.
+                raise ModelNotFoundError(
+                    f"Model '{MODEL}' returned 404 — it's likely been retired. "
+                    "Check https://ai.google.dev/gemini-api/docs/models for the "
+                    "current model ID and update MODEL in classifier.py."
+                )
+
             if resp.status_code == 429:
-                # Respect Retry-After if the API sends one, capped so one stubborn
-                # article can't stall the whole run for minutes. If we're still
-                # getting 429s at this point, it's more likely a daily quota
-                # exhaustion than a per-minute limit — more waiting won't help,
-                # so we fail this article quickly and let main.py's circuit
-                # breaker decide whether to abort the whole run.
                 retry_after = resp.headers.get("Retry-After")
                 wait_s = min(float(retry_after), MAX_BACKOFF_SECONDS) if retry_after else MAX_BACKOFF_SECONDS
                 if attempt < retries:
@@ -127,7 +137,7 @@ def classify_article(article: dict, retries: int = 1) -> dict | None:
             parsed["source_url"] = article.get("url")
             return parsed
 
-        except RateLimitedError:
+        except (RateLimitedError, ModelNotFoundError):
             raise
         except (requests.RequestException, KeyError, json.JSONDecodeError, IndexError) as e:
             if attempt < retries:

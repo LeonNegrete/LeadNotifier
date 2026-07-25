@@ -26,6 +26,9 @@ def run():
         try:
             result = classifier.classify_article(article)
             consecutive_rate_limits = 0
+        except classifier.ModelNotFoundError as e:
+            print(f"\n[config error] {e}\nStopping here — this won't fix itself by retrying.")
+            break
         except classifier.RateLimitedError:
             consecutive_rate_limits += 1
             if consecutive_rate_limits >= RATE_LIMIT_ABORT_THRESHOLD:

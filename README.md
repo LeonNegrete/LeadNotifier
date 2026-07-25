@@ -21,7 +21,9 @@ as a daily email).
 ## One-time setup
 
 1. **Create a GitHub repo** and push this project to it.
-2. **Get a free Gemini API key**: https://aistudio.google.com/apikey
+2. **Get a free Gemini API key**: https://aistudio.google.com/apikey — and
+   bookmark https://aistudio.google.com/rate-limit, which shows your
+   project's actual live rate limits (not published in general docs).
 3. **Add it as a repo secret**: repo → Settings → Secrets and variables →
    Actions → New repository secret → name it `GEMINI_API_KEY`.
 4. **Enable Actions** if it's not already (Settings → Actions → General →
@@ -62,6 +64,21 @@ worth 30 minutes of manual curation rather than treating it as done.
 - **Contact enrichment.** This tool only tells you *which property* to look
   at and *why* — finding the actual decision-maker's phone number is a
   separate downstream step, intentionally not built here.
+
+## A known risk with Gemini specifically
+
+Google has been retiring/replacing Gemini model IDs quickly and sometimes
+without much warning (we hit this directly: `gemini-2.5-flash` started
+404ing before its officially announced shutdown date). `pipeline/classifier.py`
+is currently pinned to `gemini-3.5-flash-lite`. If the pipeline ever starts
+failing with 404s again, that's what's happening — check
+https://ai.google.dev/gemini-api/docs/models for the current model ID and
+update `MODEL` in `classifier.py`. It'll fail fast and print a clear message
+telling you this exact thing when it happens, rather than silently retrying.
+
+If this becomes a recurring headache, switching providers (e.g. Groq, which
+has much more stable model naming) is a legitimate option — `classifier.py`
+is the only file that would need to change.
 
 ## Database schema
 
