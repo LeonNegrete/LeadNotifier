@@ -9,6 +9,12 @@
 # feed was dropped — it was ~95% noise (airline strikes, tourism policy, tourist-tax news)
 # for this use case. These tag-specific feeds are what Hosteltur itself uses to bucket
 # renovation/investment stories, so they arrive pre-filtered.
+#
+# 2026-07-26 update: added Hosteltur's interiorismo tag, and two new categories of
+# source entirely — real-estate/investment press (brainsre.news, arguably the single
+# best-fit source found: it covers hotel *conversions* and acquisitions, which is an
+# even earlier and stronger signal of upcoming interior spend than "reforma" news) and
+# cruise trade press (now in scope since the classifier covers ships too).
 
 feeds:
   - name: "Hosteltur - Reformas hoteleras (renovations)"
@@ -26,6 +32,15 @@ feeds:
     verified: false
     note: "Broader version of the tag above — some overlap expected, that's fine (dedup handles it)."
 
+  - name: "Hosteltur - Interiorismo"
+    url: "https://www.hosteltur.com/feed/tag/interiorismo"
+    category: "renovation_signal"
+    verified: false
+    note: >
+      Confirmed this tag exists and is actively used (checked hosteltur.com/tag/interiorismo) —
+      covers interior design studios, hotel design trends, and named projects directly.
+      Same /feed/tag/<slug> pattern as the verified reformas-hoteleras feed above.
+
   - name: "Hosteltur - Aperturas de hoteles (new openings)"
     url: "https://www.hosteltur.com/feed/tag/aperturas-de-hoteles"
     category: "hotel_openings"
@@ -38,10 +53,38 @@ feeds:
     verified: true
     note: "Broader hotel-category news — kept as a lighter-signal backstop, not the primary source anymore."
 
+  - name: "Brains Real Estate News - Hoteles"
+    url: "https://brainsre.news/category/hoteles/feed/"
+    category: "investment_signal"
+    verified: false
+    note: >
+      Strong candidate, worth checking first. Spanish hotel real-estate outlet — checked
+      the category page directly and it's dense with hotel openings, sales, and office/
+      residential-to-hotel conversions (e.g. tracked one report on a 430M€ resort sale
+      and a running list of confirmed 2026 hotel openings with per-project investment
+      figures). Conversions and acquisitions are an earlier signal than "reforma" news:
+      that money typically leads to an interior fit-out within 12-24 months. URL is a
+      standard WordPress category-feed guess — verify before relying on it.
+
   - name: "Preferente"
     url: "https://www.preferente.com/feed"
     category: "hospitality_news"
     verified: false
+
+  - name: "Cruise Industry News"
+    url: "https://cruiseindustrynews.com/feed"
+    category: "cruise_signal"
+    verified: false
+    note: >
+      Trade press specifically for cruise line executives, shipyards, and ship designers —
+      covers newbuilds and refits directly, per their own "About" page. Best-fit cruise
+      source found. URL is a standard WordPress /feed guess — verify before relying on it.
+
+  - name: "Cruise Hive"
+    url: "https://www.cruisehive.com/feed"
+    category: "cruise_signal"
+    verified: true
+    note: "More consumer-facing than Cruise Industry News, but confirmed feed URL and does cover refit/refurbishment announcements."
 
 # --- Known broken, not currently active ---
 # TecnoHotel (tecnohotelnews.com/feed) — their WordPress feed has been returning
@@ -50,18 +93,14 @@ feeds:
 # but not worth troubleshooting further right now given the Hosteltur tag feeds
 # above are more targeted anyway.
 
-# --- Add architecture / interior design press below ---
-# Good candidates to check and add (all are real publications, verify feed URL before use):
+# --- Add architecture / interior design press below (not yet added — no RSS confirmed) ---
 #   - Diariodesign (diariodesign.com) — has a dedicated hotel-interiors section at
-#     diariodesign.com/interiorismo/hoteles/ ; worth checking for a feed URL
+#     diariodesign.com/interiorismo/hoteles/ ; no feed URL confirmed yet
 #   - Experimenta (experimenta.es) — design/interiors magazine
 #   - ArchDaily en Español (archdaily.mx or plataformaarquitectura.cl) — architecture, has fit-out projects
 #   - AD España (admagazine.com) — hospitality interiors features
 #   - Contract Hoteles / Contract Design pubs — some are subscription/paywalled, check RSS availability
 
-# --- Cruise-specific sources worth adding (since scope now includes ships) ---
-#   - Cruise Industry News (cruiseindustrynews.com) — has an RSS feed, covers new-builds and refits
-#   - Seatrade Cruise News (seatrade-cruise.com) — trade press, worth checking for RSS availability
-
 # --- Regional/national real estate journals ---
 #   - Idealista news (idealista.com/news) has an RSS but is heavily residential; low signal, not included
+#   - EjePrime (Spanish retail/real estate trade press) — worth checking, not yet verified

@@ -41,15 +41,17 @@ notifications in v1, that's planned for v2 as a daily email).
   python cli/review.py
   ```
 
-## Before this is actually useful: fill out `feeds.yaml`
+## `feeds.yaml`
 
-I seeded it with a couple of confirmed-working Hosteltur feeds and a few
-educated guesses at standard WordPress `/feed` URLs for other publications —
-those are marked `verified: false`. Open each one in a browser first to
-confirm it's a real feed before relying on it. The file has notes on good
-categories of sources to add (architecture/design press, regional trade
-journals) — this list is the single biggest lever on lead quality, so it's
-worth 30 minutes of manual curation rather than treating it as done.
+Currently 9 feeds: Hosteltur's renovation/interiorismo/openings tags (highest
+signal), a hotel real-estate investment outlet (Brains RE — covers
+conversions and acquisitions, an even earlier signal than "reforma" news),
+and cruise trade press. A few are marked `verified: false` — I confirmed the
+underlying content is on-target but couldn't execute a live HTTP request to
+verify the exact feed URL resolves; the first real run will surface any that
+404 or fail to parse (they just get skipped and logged, they won't break the
+run). Worth periodically revisiting the notes at the bottom of the file for
+design/architecture press that's identified but not yet added.
 
 ## Deliberately out of scope for v1
 
@@ -69,16 +71,27 @@ worth 30 minutes of manual curation rather than treating it as done.
 
 Google has been retiring/replacing Gemini model IDs quickly and sometimes
 without much warning (we hit this directly: `gemini-2.5-flash` started
-404ing before its officially announced shutdown date). `pipeline/classifier.py`
-is currently pinned to `gemini-3.5-flash-lite`. If the pipeline ever starts
-failing with 404s again, that's what's happening — check
+404ing before its officially announced shutdown date — turned out its free
+quota had been quietly cut to 20 requests/day, which we'd already blown
+through during testing). `pipeline/classifier.py` is currently pinned to
+`gemini-3.5-flash-lite`. If the pipeline ever starts failing with 404s
+again, that's what's happening — check
 https://ai.google.dev/gemini-api/docs/models for the current model ID and
 update `MODEL` in `classifier.py`. It'll fail fast and print a clear message
 telling you this exact thing when it happens, rather than silently retrying.
 
-If this becomes a recurring headache, switching providers (e.g. Groq, which
-has much more stable model naming) is a legitimate option — `classifier.py`
-is the only file that would need to change.
+**Confirmed live limits as of 2026-07-26** (from
+https://aistudio.google.com/rate-limit — this is account-specific and can
+change without notice, so re-check there if things start failing again):
+`gemini-3.5-flash-lite` gets **15 RPM / 500 RPD** on the free tier. At the
+current pacing (`MIN_SECONDS_BETWEEN_CALLS = 6.5`, ~9.2 requests/minute)
+and realistic daily volume (~40-80 articles/day across the 9 feeds in
+`feeds.yaml`), there's comfortable headroom on both — capacity shouldn't be
+the recurring problem going forward, only future model/quota churn might be.
+
+If this becomes a recurring headache anyway, switching providers (e.g.
+Groq, which has much more stable model naming) is a legitimate option —
+`classifier.py` is the only file that would need to change.
 
 ## Database schema
 
