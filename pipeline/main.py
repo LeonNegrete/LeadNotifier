@@ -4,7 +4,7 @@ This is the entrypoint the GitHub Action runs daily.
 """
 
 import sys
-from pipeline import db, fetcher, classifier
+from pipeline import db, fetcher, classifier, notifier
 
 
 def run():
@@ -17,7 +17,7 @@ def run():
     for err in fetch_errors:
         print(f"  [feed error] {err}")
 
-    new_lead_count = 0
+    new_leads_this_run = []
     consecutive_rate_limits = 0
     RATE_LIMIT_ABORT_THRESHOLD = 3  # 3 in a row means this is a quota problem, not noise
 
@@ -46,8 +46,10 @@ def run():
 
         inserted = db.insert_lead(conn, result)
         if inserted:
-            new_lead_count += 1
+            new_leads_this_run.append(result)
             print(f"  -> NEW LEAD: {result.get('property_name')} ({result.get('location')})")
+
+    new_lead_count = len(new_leads_this_run)
 
     notes = "; ".join(fetch_errors) if fetch_errors else ""
     db.log_run(conn, articles_scanned=len(articles), new_leads=new_lead_count, notes=notes)
@@ -61,6 +63,8 @@ def run():
     with open("last_run.txt", "w", encoding="utf-8") as f:
         f.write(f"articles_scanned={len(articles)}\n")
         f.write(f"new_leads={new_lead_count}\n")
+
+    notifier.send_daily_email(new_leads_this_run, len(articles), fetch_errors)
 
     return new_lead_count
 

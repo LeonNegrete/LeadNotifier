@@ -3,8 +3,8 @@
 Daily-running scraper that reads Spanish hospitality/design trade press RSS
 feeds, uses Gemini to classify+extract renovation/fit-out leads for hotels
 **and cruise ships**, stores them in a SQLite file versioned in this repo,
-and gives you a local CLI to review them (`git pull` model — no push
-notifications in v1, that's planned for v2 as a daily email).
+sends you a **daily email digest**, and gives you a local CLI to review
+leads in more detail (`git pull` model).
 
 ## How it works
 
@@ -14,7 +14,9 @@ notifications in v1, that's planned for v2 as a daily email).
    Gemini for classification, and inserts anything relevant into `leads.db`.
 3. If `leads.db` or `last_run.txt` changed, the Action commits and pushes
    them back to this repo.
-4. You run `python cli/review.py` locally whenever you want to check leads —
+4. It sends you an email — either listing the new leads found, or a plain
+   "nothing today" heartbeat so you know the pipeline actually ran.
+5. You run `python cli/review.py` locally whenever you want to check leads —
    it pulls the latest DB, shows you everything with `lead_status = 'New'`,
    and lets you mark items reviewed and push that status back.
 
@@ -26,10 +28,24 @@ notifications in v1, that's planned for v2 as a daily email).
    project's actual live rate limits (not published in general docs).
 3. **Add it as a repo secret**: repo → Settings → Secrets and variables →
    Actions → New repository secret → name it `GEMINI_API_KEY`.
-4. **Enable Actions** if it's not already (Settings → Actions → General →
+4. **Set up the daily email** (uses Gmail — free, no new service to sign
+   up for):
+   - You need 2-Step Verification turned on for the Google account you
+     want to send from: https://myaccount.google.com/security
+   - Generate an App Password: https://myaccount.google.com/apppasswords
+     → create one for "Mail" → copy the 16-character password it gives you
+     (this is NOT your regular Gmail password — don't use that one, it
+     won't work with SMTP).
+   - Add two more repo secrets: `GMAIL_ADDRESS` (the Gmail address you're
+     sending from) and `GMAIL_APP_PASSWORD` (the 16-character password from
+     the step above).
+   - By default the digest emails that same address (i.e. you email
+     yourself). To send somewhere else instead, add an optional
+     `NOTIFY_EMAIL` secret with the destination address.
+5. **Enable Actions** if it's not already (Settings → Actions → General →
    allow all actions).
-5. Locally: `pip install -r requirements.txt`
-6. Clone the repo locally (this is where you'll run the CLI from).
+6. Locally: `pip install -r requirements.txt`
+7. Clone the repo locally (this is where you'll run the CLI from).
 
 ## Running it
 
@@ -53,19 +69,26 @@ verify the exact feed URL resolves; the first real run will surface any that
 run). Worth periodically revisiting the notes at the bottom of the file for
 design/architecture press that's identified but not yet added.
 
-## Deliberately out of scope for v1
+## Deliberately out of scope
 
 - **Building permits.** Spain doesn't have a unified national permit feed —
   it's per-municipality, mostly not machine-readable. Not worth the
   engineering time until the RSS-based version is proven out. If you want
   it later, treat it as "pick 3-5 target cities and write one scraper per
   city hall."
-- **Push notifications.** v1 is pull-only (`git pull` + CLI). A daily email
-  digest is the planned v2 (e.g. via a free transactional email API,
-  triggered at the end of the Action if `new_leads > 0`).
 - **Contact enrichment.** This tool only tells you *which property* to look
   at and *why* — finding the actual decision-maker's phone number is a
   separate downstream step, intentionally not built here.
+
+## Email digest
+
+`pipeline/notifier.py` sends one email per run — a list of new leads if any
+were found, otherwise a short "ran fine, nothing new" message. It never
+raises an exception on failure (a broken email shouldn't cost you the day's
+scraped data or fail the whole Action) — it just logs the error and the run
+continues normally. If you'd rather only get emailed when there's actually
+something new (skip the "nothing today" heartbeat), that's a one-line change
+in `notifier.send_daily_email` — return early if `not new_leads`.
 
 ## A known risk with Gemini specifically
 

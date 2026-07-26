@@ -27,6 +27,8 @@ jobs:
       - name: Run pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           PYTHONUNBUFFERED: "1"
         run: python -u -m pipeline.main
         timeout-minutes: 10   # bounded: with the circuit breaker this should never need anywhere near this long
