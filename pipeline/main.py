@@ -1,5 +1,5 @@
 """
-Orchestrator: fetch -> classify -> dedupe+store -> log.
+Orchestrator: fetch -> classify -> dedupe+store -> notify -> log.
 This is the entrypoint the GitHub Action runs daily.
 """
 

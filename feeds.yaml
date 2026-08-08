@@ -5,16 +5,27 @@
 # "verified: false" means it's a well-known publication with a standard WordPress-style
 # /feed URL guessed from convention — check it once in your browser before relying on it.
 #
-# Prioritized for SIGNAL over VOLUME (2026-07-25 update): the general Hosteltur firehose
-# feed was dropped — it was ~95% noise (airline strikes, tourism policy, tourist-tax news)
-# for this use case. These tag-specific feeds are what Hosteltur itself uses to bucket
-# renovation/investment stories, so they arrive pre-filtered.
+# Prioritized for SIGNAL over VOLUME. Lesson learned 2026-07-26: a broad topically-adjacent
+# feed (Cruise Hive) generated 15/24 articles in one run but only 2 were even remotely
+# relevant, and both got correctly filtered out anyway. Prefer narrow, purpose-built tag/
+# category feeds over general publications, even within a relevant industry.
 #
-# 2026-07-26 update: added Hosteltur's interiorismo tag, and two new categories of
-# source entirely — real-estate/investment press (brainsre.news, arguably the single
-# best-fit source found: it covers hotel *conversions* and acquisitions, which is an
-# even earlier and stronger signal of upcoming interior spend than "reforma" news) and
-# cruise trade press (now in scope since the classifier covers ships too).
+# 2026-07-26: cruise ship scope was dropped entirely (decided not worth pursuing as a
+# market) — Cruise Industry News and Cruise Hive removed accordingly. Added Experimenta's
+# interiorismo section instead, which directly names hotel renovation projects + the
+# design studios behind them.
+#
+# 2026-07-27: added Hosteltur's "tecnología hotelera" tag to catch large-format/unusual
+# screen installations (video walls, curved screens, screen arrays) per new business
+# scope — these now qualify as leads even without a broader renovation. Checked a live
+# example from this tag: a Madrid Marriott piece describing 900+ LG 4K TVs, a lobby
+# video wall, and mirror-integrated displays. Other AV/digital-signage trade press
+# (rAVe, Inavate, Digital Signage Today) was checked and rejected — mostly US/UK vendor
+# product-launch news, wrong geography, low relevance.
+#
+# Daily capacity note: confirmed live limit for the pinned Gemini model is 500 requests/day
+# (see README). Recent runs have averaged ~28/day (max 37) even with a growing feed list —
+# huge headroom. The constraint on adding more feeds is SIGNAL QUALITY, not quota.
 
 feeds:
   - name: "Hosteltur - Reformas hoteleras (renovations)"
@@ -41,6 +52,18 @@ feeds:
       covers interior design studios, hotel design trends, and named projects directly.
       Same /feed/tag/<slug> pattern as the verified reformas-hoteleras feed above.
 
+  - name: "Hosteltur - Tecnología hotelera (screens/AV)"
+    url: "https://www.hosteltur.com/feed/tag/tecnologia-hotelera"
+    category: "screen_signal"
+    verified: false
+    note: >
+      Added for the screen-installation lead type. Checked the underlying tag directly —
+      found a live example (Madrid Marriott: 900+ LG 4K TVs, lobby video wall, mirror-
+      integrated displays) that's exactly on-target. Same /feed/tag/<slug> pattern as the
+      other verified Hosteltur tag feeds. Will also carry general hotel-tech noise (WiFi,
+      check-in kiosks, PMS software) that isn't screen-relevant — the classifier prompt
+      filters that out, this feed just needs to get the signal in front of it.
+
   - name: "Hosteltur - Aperturas de hoteles (new openings)"
     url: "https://www.hosteltur.com/feed/tag/aperturas-de-hoteles"
     category: "hotel_openings"
@@ -66,25 +89,22 @@ feeds:
       that money typically leads to an interior fit-out within 12-24 months. URL is a
       standard WordPress category-feed guess — verify before relying on it.
 
+  - name: "Experimenta - Interiorismo"
+    url: "https://www.experimenta.es/noticias/interiorismo/feed/"
+    category: "renovation_signal"
+    verified: false
+    note: >
+      Spanish design magazine (est. 1988) — checked the interiorismo section directly and
+      it names both the hotel and the design studio in its hotel-renovation coverage
+      (e.g. a Hotel Barceló Málaga lobby redesign, naming studio Ilmiodesign). The general
+      magazine also covers non-hospitality design (graphic, product) — this URL is scoped
+      to just the interiorismo section to avoid that noise. Standard WP category-feed
+      guess, verify before relying on it.
+
   - name: "Preferente"
     url: "https://www.preferente.com/feed"
     category: "hospitality_news"
     verified: false
-
-  - name: "Cruise Industry News"
-    url: "https://cruiseindustrynews.com/feed"
-    category: "cruise_signal"
-    verified: false
-    note: >
-      Trade press specifically for cruise line executives, shipyards, and ship designers —
-      covers newbuilds and refits directly, per their own "About" page. Best-fit cruise
-      source found. URL is a standard WordPress /feed guess — verify before relying on it.
-
-  - name: "Cruise Hive"
-    url: "https://www.cruisehive.com/feed"
-    category: "cruise_signal"
-    verified: true
-    note: "More consumer-facing than Cruise Industry News, but confirmed feed URL and does cover refit/refurbishment announcements."
 
 # --- Known broken, not currently active ---
 # TecnoHotel (tecnohotelnews.com/feed) — their WordPress feed has been returning
@@ -93,10 +113,29 @@ feeds:
 # but not worth troubleshooting further right now given the Hosteltur tag feeds
 # above are more targeted anyway.
 
+# --- Checked and rejected for the screens angle (2026-07-27) ---
+# rAVe [Publications], Inavate, Digital Signage Today — real AV/digital-signage trade
+# press, but mostly US/UK vendor product-launch news rather than "here's a specific
+# hotel that installed X" project news, and wrong geography for a Spain-focused list.
+# Vendor sites (ComQi, BrightSign, ScreenCloud, TelemetryTV) — these are companies'
+# own marketing pages, not news sources; not usable as feeds at all.
+
+# --- Recommended manual addition: Google Alerts (free, keyword-targeted, ~2 min setup) ---
+# Google Alerts still supports RSS delivery, but it's a manual per-keyword setup (no
+# guessable URL — has to be created in your own Google account):
+#   1. Go to https://www.google.com/alerts
+#   2. Create an alert for a specific phrase, e.g. "reforma hotel" OR "video wall hotel"
+#      (try a few phrasings — narrower alerts give cleaner results than one broad one)
+#   3. Click "Show options" → set "Sources" to News/Blogs, "Region" to Spain
+#   4. Set "Deliver to" to "RSS feed" (not email)
+#   5. Save, then find the alert in "My Alerts" and copy its RSS feed URL
+#   6. Add it here as a new feed entry
+# This is worth doing — it's free, catches sources outside this curated list entirely,
+# and you control the exact keywords.
+
 # --- Add architecture / interior design press below (not yet added — no RSS confirmed) ---
 #   - Diariodesign (diariodesign.com) — has a dedicated hotel-interiors section at
 #     diariodesign.com/interiorismo/hoteles/ ; no feed URL confirmed yet
-#   - Experimenta (experimenta.es) — design/interiors magazine
 #   - ArchDaily en Español (archdaily.mx or plataformaarquitectura.cl) — architecture, has fit-out projects
 #   - AD España (admagazine.com) — hospitality interiors features
 #   - Contract Hoteles / Contract Design pubs — some are subscription/paywalled, check RSS availability

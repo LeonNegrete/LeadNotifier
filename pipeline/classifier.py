@@ -20,7 +20,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 MODEL = "gemini-3.5-flash-lite"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-TARGET_MARKET = "Spain"
+TARGET_COUNTRY = "Spain"
 
 
 class RateLimitedError(Exception):
@@ -40,32 +40,39 @@ MIN_SECONDS_BETWEEN_CALLS = 6.5
 MAX_BACKOFF_SECONDS = 20
 _last_call_at = 0.0
 
-PROMPT_TEMPLATE = """You are a lead-qualification filter for a hospitality interior design sales team.
+PROMPT_TEMPLATE = """You are a lead-qualification filter for a company that sells digital art
+licensing and screen-content curation to hospitality venues.
 
 Read the article below (title + summary). Decide if it describes a REAL, SPECIFIC
-renovation, construction, fit-out, or interior design project for EITHER:
-  (a) a hotel, resort, or other hospitality property located in {market}, OR
-  (b) a cruise ship — new-build, refit, or refurbishment — that is relevant to
-      the Spanish market (a Spanish/Spain-based cruise line or operator, or a
-      ship being marketed to Spanish travelers). Ships don't have a fixed
-      country location, so judge relevance by market/operator, not geography.
+lead for EITHER of these, for a hotel, resort, or other hospitality property
+located in {country}:
+
+  (a) RENOVATION: a renovation, construction, fit-out, or interior design project.
+
+  (b) SCREEN INSTALLATION: a large-format, unusual, or eye-catching screen/display
+      installation — e.g. a video wall, curved screen, screen array, floor-to-ceiling
+      display, large-format LED wall, transparent/OLED display, or interactive display
+      wall. This counts even WITHOUT a broader renovation being mentioned — a hotel
+      simply installing a striking screen setup is a qualifying lead on its own.
 
 Do NOT count: general industry trend pieces, opinion columns, financial/earnings
-news with no physical renovation/construction mentioned, or articles about a
-property or ship that is just opening/operating/sailing with no renovation or
-design work mentioned.
+news with no physical renovation/construction/screen-installation mentioned, or
+articles about a property that is just opening/operating with nothing renovated,
+built, or installed. Ordinary small TVs (in-room guest TVs, standard reception
+monitors) do NOT count as (b) — only large-format or visually unusual installations do.
 
 Respond with ONLY a JSON object (no markdown fences, no preamble), matching this
 exact shape:
 
 {{
   "is_relevant": true or false,
-  "property_type": "one of: Hotel, Resort, Cruise Ship, Other",
+  "lead_type": "one of: Renovation, Screen Installation, Both",
+  "property_type": "one of: Hotel, Resort, Apart-hotel, Other",
   "property_name": "string or null",
-  "location": "string or null (city/province/region for hotels; home port or cruise line's home market for ships)",
+  "location": "string or null (city/province/region)",
   "project_stage": "one of: Permit Granted, Under Renovation, Pre-opening, Planned, Unknown",
   "interior_studio": "string or null (design/architecture firm, if named)",
-  "investor_chain": "string or null (hotel group / cruise line / ownership, if named)",
+  "investor_chain": "string or null (hotel group / ownership, if named)",
   "summary": "one sentence in English summarizing the project"
 }}
 
@@ -91,7 +98,7 @@ def classify_article(article: dict, retries: int = 1) -> dict | None:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 
     prompt = PROMPT_TEMPLATE.format(
-        market=TARGET_MARKET,
+        country=TARGET_COUNTRY,
         title=article.get("title", ""),
         summary=article.get("summary", ""),
     )

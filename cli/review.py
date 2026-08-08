@@ -43,7 +43,8 @@ def show_leads(leads):
     print(f"\n{len(leads)} new lead(s):\n" + "=" * 60)
     for lead in leads:
         type_tag = f" ({lead['property_type']})" if lead.get("property_type") else ""
-        print(f"[{lead['id']}] {lead.get('property_name') or 'Unnamed property'}{type_tag}")
+        lead_type_tag = f" [{lead['lead_type']}]" if lead.get("lead_type") else ""
+        print(f"[{lead['id']}] {lead.get('property_name') or 'Unnamed property'}{type_tag}{lead_type_tag}")
         print(f"    Location:        {lead.get('location') or '-'}")
         print(f"    Stage:           {lead.get('project_stage') or '-'}")
         print(f"    Interior studio: {lead.get('interior_studio') or '-'}")

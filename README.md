@@ -1,10 +1,11 @@
 # Hotel Interior Design Lead Scraper
 
 Daily-running scraper that reads Spanish hospitality/design trade press RSS
-feeds, uses Gemini to classify+extract renovation/fit-out leads for hotels
-**and cruise ships**, stores them in a SQLite file versioned in this repo,
-sends you a **daily email digest**, and gives you a local CLI to review
-leads in more detail (`git pull` model).
+feeds, uses Gemini to classify+extract leads — hotel renovations/fit-outs
+**and large-format/unusual screen installations** (video walls, curved
+screens, screen arrays) — stores them in a SQLite file versioned in this
+repo, sends you a **daily email digest**, and gives you a local CLI to
+review leads in more detail (`git pull` model).
 
 ## How it works
 
@@ -57,17 +58,43 @@ leads in more detail (`git pull` model).
   python cli/review.py
   ```
 
+## Two lead types
+
+As of 2026-07-27, a lead qualifies for either of two reasons (tracked in the
+`lead_type` column: `Renovation`, `Screen Installation`, or `Both`):
+
+- **Renovation** — the original scope: a renovation, construction, fit-out,
+  or interior design project.
+- **Screen Installation** — added per a business request to also catch
+  large-format or visually unusual screen setups (video walls, curved
+  screens, screen arrays, floor-to-ceiling displays) even when there's no
+  broader renovation attached. Ordinary in-room guest TVs or standard
+  reception monitors don't count — only large-format or visually unusual
+  installations do. See `pipeline/classifier.py`'s `PROMPT_TEMPLATE` for the
+  exact qualifying rules.
+
+Cruise ships were considered and explicitly dropped from scope (decided not
+worth pursuing as a market) — see git history around 2026-07-26 if that
+ever needs revisiting.
+
 ## `feeds.yaml`
 
-Currently 9 feeds: Hosteltur's renovation/interiorismo/openings tags (highest
-signal), a hotel real-estate investment outlet (Brains RE — covers
+Currently 9 feeds, prioritized for signal over volume: Hosteltur's
+renovation/interiorismo/openings/tecnología-hotelera tags (highest signal,
+the last of these added specifically for the screen-installation lead
+type), a hotel real-estate investment outlet (Brains RE — covers
 conversions and acquisitions, an even earlier signal than "reforma" news),
-and cruise trade press. A few are marked `verified: false` — I confirmed the
-underlying content is on-target but couldn't execute a live HTTP request to
-verify the exact feed URL resolves; the first real run will surface any that
-404 or fail to parse (they just get skipped and logged, they won't break the
-run). Worth periodically revisiting the notes at the bottom of the file for
-design/architecture press that's identified but not yet added.
+and Experimenta's interiorismo section (names both the property and the
+design studio directly). Cruise trade press and general AV/digital-signage
+trade press (rAVe, Inavate) were both tried/considered and rejected — see
+the notes in the file for why; the general lesson is that narrow,
+purpose-built feeds beat broad ones even within a relevant industry. A few
+entries are marked `verified: false` — I confirmed the underlying content
+is on-target but couldn't execute a live HTTP request to verify the exact
+feed URL resolves; the first real run will surface any that 404 or fail to
+parse (they just get skipped and logged, they won't break the run). There's
+also a walkthrough at the bottom of the file for adding a free,
+keyword-targeted Google Alerts RSS feed — worth doing, takes about 2 minutes.
 
 ## Deliberately out of scope
 
@@ -106,11 +133,12 @@ telling you this exact thing when it happens, rather than silently retrying.
 **Confirmed live limits as of 2026-07-26** (from
 https://aistudio.google.com/rate-limit — this is account-specific and can
 change without notice, so re-check there if things start failing again):
-`gemini-3.5-flash-lite` gets **15 RPM / 500 RPD** on the free tier. At the
-current pacing (`MIN_SECONDS_BETWEEN_CALLS = 6.5`, ~9.2 requests/minute)
-and realistic daily volume (~40-80 articles/day across the 9 feeds in
-`feeds.yaml`), there's comfortable headroom on both — capacity shouldn't be
-the recurring problem going forward, only future model/quota churn might be.
+`gemini-3.5-flash-lite` gets **15 RPM / 500 RPD** on the free tier. Real
+usage across 14 runs has averaged ~28 articles/day (max 37) — under 6% of
+capacity even before this update's new feed. There's comfortable headroom
+for significant future growth (~350/day would still leave a safety buffer) —
+capacity shouldn't be the recurring problem going forward, only future
+model/quota churn might be.
 
 If this becomes a recurring headache anyway, switching providers (e.g.
 Groq, which has much more stable model naming) is a legitimate option —
@@ -121,10 +149,11 @@ Groq, which has much more stable model naming) is a legitimate option —
 See `pipeline/db.py` for the full schema. Main table is `leads`, with a
 `run_log` table tracking each day's scan (article count, leads found) —
 that's what powers `last_run.txt`. There's a `property_type` column
-(Hotel / Resort / Cruise Ship / Other) so you can tell at a glance what
-kind of lead you're looking at in the CLI. `init_db()` migrates existing
-databases automatically (adds the column if it's missing) — you don't need
-to do anything by hand when pulling this update.
+(Hotel / Resort / Apart-hotel / Other) and a `lead_type` column
+(Renovation / Screen Installation / Both) so you can tell at a glance what
+kind of lead you're looking at, both in the CLI and the email digest.
+`init_db()` migrates existing databases automatically (adds missing columns)
+— you don't need to do anything by hand when pulling updates.
 
 ## Notes on scale
 

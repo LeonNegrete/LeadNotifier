@@ -23,8 +23,9 @@ NOTIFY_EMAIL = os.environ.get("NOTIFY_EMAIL") or GMAIL_ADDRESS
 
 def _format_lead(lead: dict) -> str:
     type_tag = f" ({lead['property_type']})" if lead.get("property_type") else ""
+    lead_type = f" [{lead['lead_type']}]" if lead.get("lead_type") else ""
     lines = [
-        f"• {lead.get('property_name') or 'Unnamed property'}{type_tag}",
+        f"• {lead.get('property_name') or 'Unnamed property'}{type_tag}{lead_type}",
         f"    Location:  {lead.get('location') or '-'}",
         f"    Stage:     {lead.get('project_stage') or '-'}",
         f"    Studio:    {lead.get('interior_studio') or '-'}",
