@@ -1,2 +1,2 @@
-articles_scanned=23
-new_leads=2
+articles_scanned=13
+new_leads=0
